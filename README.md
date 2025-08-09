@@ -1,6 +1,6 @@
 # FocusFlow: The Meeting Coach — Minimal Offline MVP (Web, TypeScript/Next.js)
 
-This project provides the absolute most basic, one‑shot Meeting Coach as a local web app. Upload an audio file and paste an agenda; it produces a report (HTML + JSON) with tangents, agenda coverage, actions, and an effectiveness score.
+A local web app that turns an audio file + agenda text into a meeting report: tangents, agenda coverage, actions, and an effectiveness score.
 
 ## What this MVP does (offline)
 
@@ -9,55 +9,59 @@ This project provides the absolute most basic, one‑shot Meeting Coach as a loc
 - Detects topic drift using embeddings + cosine similarity.
 - Estimates agenda coverage and simple timing.
 - Generates summary, decisions, and action items via one LLM call.
-- Computes a simple 0–100 effectiveness score.
-- Writes a self‑contained HTML report to `public/reports` and returns a link.
+- Computes a 0–100 effectiveness score.
+- Writes an HTML + JSON report to `public/reports/` and returns a link.
 
-## Quick start
+## Prerequisites
 
-1. Prerequisites
-   - Node.js 18+
-   - An OpenAI API key with access to Whisper + embeddings + a small chat model
-2. Setup
-   - `cd meeting-coach`
+- Node.js 18+
+- An OpenAI API key (Whisper + `text-embedding-3-small` + `gpt-4o-mini`)
+
+## Setup
+
+1. Install deps
    - `corepack enable && pnpm i`
+2. Configure env
    - Create `.env.local` with:
      ```
      OPENAI_API_KEY=sk-...
      ```
-3. Run
-   - Dev: `pnpm dev`
+3. Start dev server
+   - `pnpm dev`
    - Open `http://localhost:3000`
-   - Upload an audio file and paste your agenda; click Analyze and open the report link.
 
-Reports are saved under `public/reports/` as `{id}.html` and `{id}.json`.
+## How to test (step-by-step)
 
-## Inputs
+1. Prepare an audio file
+   - Format: `.mp3` or `.wav`
+   - Length: start with 1–5 minutes to validate end-to-end
+   - Content: include both on-topic and off-topic chatter to see tangents flagged
+2. Prepare an agenda
+   - Paste into the UI, one item per line; durations optional
+   - Examples:
+     - `Roadmap Q3 (10m)`
+     - `Hiring plan – 5m`
+     - `Open Q&A 10m`
+3. Run an analysis
+   - Drag-and-drop the audio file or click to upload
+   - Paste the agenda
+   - Click "Analyze"
+4. View the result
+   - A link appears: "Open report"
+   - It will open `public/reports/{id}.html`
+   - The JSON lives at `public/reports/{id}.json`
 
-- Agenda: plain text lines, optional durations, e.g.:
-  - `Roadmap Q3 (10m)`
-  - `Hiring plan – 5m`
-  - `Open Q&A 10m`
-- Audio: `.mp3` or `.wav` (short file recommended for first run)
+## What to expect as output
 
-## Outputs
+- Report contains:
+  - Score: 0–100 (weighted: focus 40, adherence 30, balance 10, action clarity 15)
+  - Agenda coverage table: planned vs. actual minutes and coverage %
+  - Tangent timeline: merged spans where off-topic similarity fell below threshold (0.72)
+  - Summary: 5–8 bullets
+  - Decisions: concise bullet list
+  - Action items: `[Owner] Task (Due)` format if parsed
 
-- `public/reports/{id}.json` — structured analytics and extracted actions
-- `public/reports/{id}.html` — self‑contained HTML
-
-## Pipeline overview
-
-1. Transcribe (Whisper `whisper-1`), capturing segments and timestamps.
-2. Parse agenda into `{ title, plannedMinutes, order }` with defaults.
-3. Chunk transcript (~30s windows) from segments.
-4. Embeddings + drift:
-   - `text-embedding-3-small` for agenda titles and chunks
-   - Off‑topic flag if max similarity < 0.72
-   - Merge consecutive off‑topic chunks into tangent spans
-5. Coverage & timing: assign on‑topic chunks to best agenda item; sum durations.
-6. Summary/decisions/actions: one chat call (`gpt‑4o‑mini`) returning JSON.
-7. Score: focus (40), adherence (30), balance (10 placeholder), action clarity (15); 0–100.
-
-## Example output schema (`public/reports/{id}.json`)
+Example `public/reports/{id}.json`:
 
 ```json
 {
@@ -92,15 +96,15 @@ Reports are saved under `public/reports/` as `{id}.html` and `{id}.json`.
 }
 ```
 
-## Notes & limits
+## Tips
 
-- Keep files short to control latency/cost.
+- Keep your first test short to minimize cost and latency.
 - If Whisper returns no segments, the app falls back to a single chunk.
 - Balance score is a placeholder until diarization is added.
 
 ## Next steps
 
-- Improve UI: render the full HTML report (timeline, charts) server‑side.
-- Add diarization and speaking‑time balance.
-- Persist reports to a database and list them in a dashboard.
-- Add Slack notifications and move toward realtime analysis.
+- Render full report UI with charts and a timeline instead of minimal HTML.
+- Add diarization (speaker labels) and speaking-time balance.
+- Persist reports to a database with a meetings list.
+- Slack notifications and realtime streaming.
